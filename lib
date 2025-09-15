@@ -1,0 +1,64 @@
+
+export NC='\e[0m' # No Color
+export BLACK='\e[0;30m'
+export GRAY='\e[1;30m'
+export RED='\e[0;31m'
+export LIGHT_RED='\e[1;31m'
+export GREEN='\e[0;32m'
+export LIGHT_GREEN='\e[1;32m'
+export BROWN='\e[0;33m'
+export YELLOW='\e[1;33m'
+export BLUE='\e[0;34m'
+export LIGHT_BLUE='\e[1;34m'
+export PURPLE='\e[0;35m'
+export LIGHT_PURPLE='\e[1;35m'
+export CYAN='\e[0;36m'
+export LIGHT_CYAN='\e[1;36m'
+export LIGHT_GRAY='\e[0;37m'
+export WHITE='\e[1;37m'
+
+
+conf_getty() {
+mkdir /etc/systemd/system/getty@tty1.service.d/
+cat <<EOF > /etc/systemd/system/getty@tty1.service.d/noclean.conf
+[Unit]
+Requires=issue-screenfetch.service
+
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --issue-file /etc/issue.tty1 -o '-- \\u' --noreset --noclear - ${TERM}
+TTYVTDisallocate=no
+EOF
+}
+
+
+gen_issue() {
+cat <<EOF > /usr/local/bin/issue-screenfetch.sh
+#!/bin/bash
+
+x=$(ip a s dev eth0  | grep  " inet "); 
+words=($x); 
+#/usr/bin/screenfetch -C "IP:${words[1]}" > /etc/issue
+/usr/bin/screenfetch -d'-host' -C "eth0=${words[1]}" > /etc/issue.tty1
+EOF
+}
+
+
+gen_unit() {
+cat <<EOF > /etc/systemd/system/issue-screenfetch.service
+[Unit]
+Description=Use screenfetch to update /etc/issue during boot
+After=network-online.target
+Wants=network-online.target
+Requires=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/issue-screenfetch.sh 
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+}
+
